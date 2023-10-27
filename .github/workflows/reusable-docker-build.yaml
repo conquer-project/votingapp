@@ -79,5 +79,5 @@ jobs:
           ECR_CONTEXT: ${{ inputs.context }}
           IMAGE_TAG: ${{ inputs.image-name }}-latest
         run: |
-          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG .
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ${{ inputs.context }}
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
