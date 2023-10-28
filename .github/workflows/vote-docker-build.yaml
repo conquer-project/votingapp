@@ -3,11 +3,11 @@ on:
     branches:
       - main
     paths:
-      - "result/**"
+      - "vote/**"
  
   pull_request:
     paths: 
-      - "result/**"
+      - "vote/**"
 
 jobs:
 
@@ -23,5 +23,5 @@ jobs:
     
     with:
       role-to-assume: ${{ vars.GH_IDP_AWS_ROLE_TO_ASSUME }}
-      context: ./result
-      image-name: vottingapp-result
+      context: ./vote
+      image-name: vottingapp-vote
