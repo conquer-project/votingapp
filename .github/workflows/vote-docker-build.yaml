@@ -24,4 +24,4 @@ jobs:
     with:
       role-to-assume: ${{ vars.GH_IDP_AWS_ROLE_TO_ASSUME }}
       context: ./vote
-      image-name: vottingapp-vote
+      image-name: votingapp-vote
