@@ -4,11 +4,15 @@ on:
       - main
     paths:
       - "result/**"
+      - "vote/**"
+      - "worker/**"
  
   pull_request:
     paths: 
       - "result/**"
-
+      - "vote/**"
+      - "worker/**"
+      
 jobs:
 
   call-docker-build:

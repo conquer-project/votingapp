@@ -11,11 +11,6 @@ on:
         description: Docker context (path) to start build from
         required: false
         type: string
-      # tag:
-      #   description: Use docker-metadata action to create tags # https://github.com/marketplace/actions/docker-metadata-action#tags-input
-      #   required: false
-      #   type: string
-      #   default: |
       aws-region:
         description: AWS Region to use on registry
         required: false
@@ -71,13 +66,32 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
       - 
+        name: Create new Repo Tag
+        id: tag_version
+        uses: mathieudutour/github-tag-action@v6.1
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      -  
+        name: Get Service to Build
+        if: github.event_name == 'push'
+        id: service-id
+        run: |
+          echo "service-name=$(git diff --name-only HEAD~1 | cut -d'/' -f1 | head -1 )" >> $GITHUB_OUTPUT
+      - 
+        name: Build and Push to AWS ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+        run: |
+          docker buildx build --push --platform linux/amd64 \
+          --tag ${{ env.REGISTRY }}/${{ inputs.app }}:${{ steps.tag_version.outputs.new_tag }} .
+      - 
         name: Build, tag, and push the image to Amazon ECR
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ inputs.aws-ecr-repo }}
           ECR_CONTEXT: ${{ inputs.context }}
-          IMAGE_TAG: ${{ inputs.image-name }}-latest
+          IMAGE_TAG: ${{ inputs.image-name }}-${{ steps.tag_version.outputs.new_tag }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ${{ inputs.context }}
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
