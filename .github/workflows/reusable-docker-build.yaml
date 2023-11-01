@@ -85,7 +85,7 @@ jobs:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ inputs.aws-ecr-repo }}
           SERVICE_NAME: ${{ steps.service-id.outputs.service-name }} 
-          IMAGE_TAG: ${{ steps.service-id.outputs.service-name }}-${{ steps.tag_version.outputs.new_tag }}
+          IMAGE_TAG: ${{ steps.tag_version.outputs.new_tag }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./$SERVICE_NAME
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
