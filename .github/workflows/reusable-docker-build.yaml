@@ -1,4 +1,4 @@
-name: Reusable Build & Push Docker
+name: Reusable Build & Push Docker using Semver
 
 on:
   workflow_call:
@@ -54,7 +54,9 @@ jobs:
         uses: docker/setup-buildx-action@v3.0.0
       -
         name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - 
         name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v3
@@ -66,26 +68,38 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v1
       -  
-        name: Get Service to Build
-        #if: github.event_name == 'push'
+        name: Get Service name to Build
         id: service-id
         run: |
-          echo "service-name=$(git log -1 --pretty=format:%h --name-only | xargs -I {} dirname {} | sort -u | tail -1)" >> $GITHUB_OUTPUT
+          echo "service-name=$(git diff --name-only HEAD~1 | grep -o '^[^/]*' | cut -d "/" -f2 | head -1)" >> $GITHUB_OUTPUT
       - 
-        name: Create new Repo Tag
-        id: tag_version
-        uses: mathieudutour/github-tag-action@v6.1
+        name: Service version tag
+        id: tag-version
+        uses: paulhatch/semantic-version@v5.3.0
+        env:
+          SERVICE_NAME: ${{ steps.service-id.outputs.service-name }} 
         with:
-          tag_prefix: ${{ steps.service-id.outputs.service-name }}-v
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          major_pattern: "(major-${{ env.SERVICE_NAME }})"
+          minor_pattern: "(minor-${{ env.SERVICE_NAME }})"
+          bump_each_commit: true
+          bump_each_commit_patch_pattern: "(patch-${{ env.SERVICE_NAME }})"
+          change_path: "${{ env.SERVICE_NAME }}/**"
+          namespace: ${{ env.SERVICE_NAME }}
+      - 
+        name: Upload release notes
+        if: steps.tag-version.outputs.version_tag
+        uses: Roang-zero1/github-create-release-action@v3
+        with:
+          created_tag: ${{ steps.tag-version.outputs.version_tag }}
       - 
         name: Build, tag, and push the image to Amazon ECR
+        if: steps.tag-version.outputs.version_tag
         id: build-image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           ECR_REPOSITORY: ${{ inputs.aws-ecr-repo }}
           SERVICE_NAME: ${{ steps.service-id.outputs.service-name }} 
-          IMAGE_TAG: ${{ steps.tag_version.outputs.new_tag }}
+          IMAGE_TAG: ${{ steps.tag-version.outputs.version_tag }}
         run: |
           docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./$SERVICE_NAME
           docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG
