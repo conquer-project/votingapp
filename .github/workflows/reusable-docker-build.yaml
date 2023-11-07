@@ -36,17 +36,12 @@ on:
         type: string
         default: dev-conquer-ecr-repo
 
-permissions:
-  id-token: write
-  contents: write
-  packages: write 
-  pull-requests: write 
-
 jobs:
   build-image:
     name: Build and Push
     runs-on: ubuntu-latest
-    
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
       - 
         name: Set up Docker Buildx
