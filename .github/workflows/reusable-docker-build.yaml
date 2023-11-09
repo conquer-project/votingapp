@@ -3,33 +3,41 @@ name: Reusable Build & Push Docker using Semver
 on:
   workflow_call:
     inputs:
-      image-name: 
-        description: Name of de Image
-        required: false
-        type: string
-      context:
-        description: Docker context (path) to start build from
-        required: false
-        type: string
+      # image-name: 
+      #   description: Name of de Image
+      #   required: false
+      #   type: string
+      # context:
+      #   description: Docker context (path) to start build from
+      #   required: false
+      #   type: string
+      # push:
+      #   description: Push image to registry
+      #   required: false
+      #   type: boolean
+      #   default: true
+
+      # AWS Regions where the registry is located
       aws-region:
         description: AWS Region to use on registry
         required: false
         type: string
         default: eu-north-1
+      
+      # Role AWS to assume and use to push images  
       role-to-assume:
         description: Role to assume
         required: false
         type: string
-      push:
-        description: Push image to registry
-        required: false
-        type: boolean
-        default: true
+      
+      # Common Platforms used: linux/amd64,linux/arm64,linux/arm/v7
       platforms:
         description: Platforms to build for
         required: false
         type: string
         default: linux/amd64 
+      
+      # Place the project repository here
       aws-ecr-repo:
         description: ECR Repository name
         required: false
@@ -81,7 +89,7 @@ jobs:
           change_path: "${{ env.SERVICE_NAME }}/**"
           namespace: ${{ env.SERVICE_NAME }}
       - 
-        name: Upload release notes
+        name: Upload new tag
         if: steps.tag-version.outputs.version_tag
         uses: Roang-zero1/github-create-release-action@v3
         with:
