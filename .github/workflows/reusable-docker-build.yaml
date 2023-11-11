@@ -1,0 +1,108 @@
+name: Reusable Build & Push Docker using Semver
+
+on:
+  workflow_call:
+    inputs:
+      # image-name: 
+      #   description: Name of de Image
+      #   required: false
+      #   type: string
+      # context:
+      #   description: Docker context (path) to start build from
+      #   required: false
+      #   type: string
+      # push:
+      #   description: Push image to registry
+      #   required: false
+      #   type: boolean
+      #   default: true
+
+      # AWS Regions where the registry is located
+      aws-region:
+        description: AWS Region to use on registry
+        required: false
+        type: string
+        default: eu-north-1
+      
+      # Role AWS to assume and use to push images  
+      role-to-assume:
+        description: Role to assume
+        required: false
+        type: string
+      
+      # Common Platforms used: linux/amd64,linux/arm64,linux/arm/v7
+      platforms:
+        description: Platforms to build for
+        required: false
+        type: string
+        default: linux/amd64 
+      
+      # Place the project repository here
+      aws-ecr-repo:
+        description: ECR Repository name
+        required: false
+        type: string
+        default: dev-conquer-ecr-repo
+
+jobs:
+  build-image:
+    name: Build and Push
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - 
+        name: Set up Docker Buildx
+        id: buildx
+        uses: docker/setup-buildx-action@v3.0.0
+      -
+        name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - 
+        name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v3
+        with:
+          role-to-assume: ${{ inputs.role-to-assume }}
+          aws-region: ${{ inputs.aws-region }}
+      - 
+        name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v1
+      -  
+        name: Get Service name to Build
+        id: service-id
+        run: |
+          echo "service-name=$(git diff --name-only HEAD~1 | grep -o '^[^/]*' | cut -d "/" -f2 | head -1)" >> $GITHUB_OUTPUT
+      - 
+        name: Service version tag
+        id: tag-version
+        uses: paulhatch/semantic-version@v5.3.0
+        env:
+          SERVICE_NAME: ${{ steps.service-id.outputs.service-name }} 
+        with:
+          major_pattern: "(major-${{ env.SERVICE_NAME }})"
+          minor_pattern: "(minor-${{ env.SERVICE_NAME }})"
+          bump_each_commit: true
+          bump_each_commit_patch_pattern: "(patch-${{ env.SERVICE_NAME }})"
+          change_path: "${{ env.SERVICE_NAME }}/**"
+          namespace: ${{ env.SERVICE_NAME }}
+      - 
+        name: Upload new tag
+        if: steps.tag-version.outputs.version_tag
+        uses: Roang-zero1/github-create-release-action@v3
+        with:
+          created_tag: ${{ steps.tag-version.outputs.version_tag }}
+      - 
+        name: Build, tag, and push the image to Amazon ECR
+        if: steps.tag-version.outputs.version_tag
+        id: build-image
+        env:
+          ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          ECR_REPOSITORY: ${{ inputs.aws-ecr-repo }}
+          SERVICE_NAME: ${{ steps.service-id.outputs.service-name }} 
+          IMAGE_TAG: ${{ steps.tag-version.outputs.version_tag }}
+        run: |
+          docker build -t $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG ./$SERVICE_NAME
+          docker push $ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG

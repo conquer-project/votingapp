@@ -1,0 +1,31 @@
+name: Docker Build
+
+on:
+  push:
+    paths:
+      - "result/**"
+      - "vote/**"
+      - "worker/**"
+      - "!./github/**"
+ 
+  pull_request:
+    paths: 
+      - "result/**"
+      - "vote/**"
+      - "worker/**"
+      - "!.github/**"
+
+jobs:
+
+  call-docker-build:
+    name: Call Docker Build
+    uses: ./.github/workflows/reusable-docker-build.yaml
+
+    permissions:
+      id-token: write
+      contents: write
+      packages: write
+      pull-requests: write
+    
+    with:
+      role-to-assume: ${{ vars.GH_IDP_AWS_ROLE_TO_ASSUME }}
